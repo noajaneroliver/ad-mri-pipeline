@@ -6,12 +6,10 @@ bids_root: /path/to/ADNI/bids
 derivatives_root: /path/to/ADNI/derivatives/admri
 
 bids:
-  # Which subjects to process. If both are null, all sub-* folders.
+  # Optional: only these subjects from the CSV, null = every row of the CSV.
   subjects: null                 # e.g. [ADNI002S0295, ADNI002S0413]
+  # REQUIRED: CSV with columns "subject" and "session"; one image per row.
   subject_list: /path/to/ADNI/subjects.csv
-  subject_column: subject
-  # null = first session of each subject, "all" = every session, or a label.
-  session: null
   datatype: anat
   suffix: T1w
   extension: .nii.gz

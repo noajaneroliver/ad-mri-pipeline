@@ -1,0 +1,13 @@
+numpy
+pandas
+scipy
+Pillow
+nibabel
+pybids
+PyYAML
+
+[dev]
+pytest
+
+[tissue_maps]
+antspyx

@@ -64,13 +64,13 @@ def load_layout(bids_root, database_path=None):
     bids.BIDSLayout
         The indexed dataset.
     """
-    from bids import BIDSLayout
+    from bids import BIDSLayout, BIDSLayoutIndexer
 
+    indexer = BIDSLayoutIndexer(validate=False, index_metadata=False)
     if database_path is None:
-        return BIDSLayout(str(bids_root), validate=False)
+        return BIDSLayout(str(bids_root), validate=False, indexer=indexer)
     Path(database_path).parent.mkdir(parents=True, exist_ok=True)
-    return BIDSLayout(str(bids_root), validate=False, database_path=str(database_path))
-
+    return BIDSLayout(str(bids_root), validate=False, indexer=indexer, database_path=str(database_path))
 
 def get_subjects(layout, subjects=None, subject_list=None, subject_column="subject"):
     """
@@ -113,8 +113,7 @@ def get_subjects(layout, subjects=None, subject_list=None, subject_column="subje
     requested = [strip_prefix(s, "sub") for s in subjects]
     missing = sorted(set(requested) - available)
     if missing:
-        print(f"[bids] {len(missing)} requested subjects are not in the dataset "
-              f"(first: {missing[:5]}).")
+        print(f"[bids] {len(missing)} requested subjects are not in the dataset " f"(first: {missing[:5]}).")
     return sorted(s for s in dict.fromkeys(requested) if s in available)
 
 
@@ -129,8 +128,7 @@ def get_sessions(layout, subject, session=None):
     subject : str
         Subject label without ``sub-``.
     session : str, optional
-        - ``None``: the first available session (alphabetical order), which
-          gives one image per subject.
+        - ``None``: the first available session (alphabetical order), which gives one image per subject.
         - ``"all"``: every session of the subject.
         - any other value: that session (with or without ``ses-``).
 
@@ -149,10 +147,41 @@ def get_sessions(layout, subject, session=None):
     session = strip_prefix(session, "ses")
     return [session] if session in available else []
 
+def pick_preferred(files, prefer=None):
+    """
+    Return the file that best matches the preferences, or None if ``files`` is empty.
 
+    Parameters
+    ----------
+    files : list of bids.layout.BIDSFile
+        Candidate files of one subject and session.
+    prefer : dict, optional
+        ``entity -> preferred values in order``, e.g. ``{"run": [2]}``.
 
-def select_image(layout, subject, session=None, datatype="anat", suffix="T1w",
-                 extension=".nii.gz", filters=None, prefer=None):
+    Returns
+    -------
+    bids.layout.BIDSFile or None
+        The preferred file; ties are broken alphabetically by file name.
+    """
+    if not files:
+        return None
+
+    def norm(value):  # 2, "2" and "02" -> "2"
+        text = str(value)
+        return str(int(text)) if text.isdigit() else text
+
+    def rank(f):
+        entities = f.get_entities()
+        ranks = []
+        for entity, values in (prefer or {}).items():
+            wanted = [norm(v) for v in (values if isinstance(values, list) else [values])]
+            current = norm(entities.get(entity))
+            ranks.append(wanted.index(current) if current in wanted else len(wanted))
+        return (*ranks, Path(f.path).name)
+
+    return sorted(files, key=rank)[0]
+
+def select_image(layout, subject, session=None, datatype="anat", suffix="T1w", extension=".nii.gz", filters=None, prefer=None):
     """
     Select one image for a subject and session.
 
@@ -189,23 +218,7 @@ def select_image(layout, subject, session=None, datatype="anat", suffix="T1w",
     if session is not None:
         query["session"] = session
     files = layout.get(**query)
-    if not files:
-        return None
-
-    def norm(value):  # 2, "2" and "02" -> "2"
-        text = str(value)
-        return str(int(text)) if text.isdigit() else text
-
-    def rank(f):  # position of each file entity in its preference list
-        entities = f.get_entities()
-        ranks = []
-        for entity, values in (prefer or {}).items():
-            wanted = [norm(v) for v in (values if isinstance(values, list) else [values])]
-            current = norm(entities.get(entity))
-            ranks.append(wanted.index(current) if current in wanted else len(wanted))
-        return (*ranks, Path(f.path).name)
-
-    return sorted(files, key=rank)[0]
+    return pick_preferred(files, prefer)
 
 
 def build_bids_name(entities, suffix, extension):
@@ -349,32 +362,44 @@ def get_derivatives_root(config):
 
 def list_images(config):
     """
-    List the input T1w images to process, one per subject and session.
+    List the input images to process, one per row of the subject list.
 
     Parameters
     ----------
     config : dict
         Merged configuration (``bids_root`` and ``bids`` keys).
+        ``bids.subject_list`` is a CSV with columns ``subject`` and ``session``.
+        If ``bids.subjects`` is set, only those subjects of the CSV are kept.
 
     Returns
     -------
     list of dict
-        One dict per image with keys ``path`` (str) and ``entities`` (dict).
-        Subjects or sessions without a matching image are reported and skipped.
+        One dict per image with keys ``path`` (str) and ``entities`` (dict),
+        in the order of the CSV. Rows without a matching image are reported
+        and skipped.
     """
     b = config["bids"]
     layout = load_layout(config["bids_root"], b["database_path"])
 
+    df = pd.read_csv(b["subject_list"])
+    if b["subjects"]:  # only these subjects, with their CSV session
+        keep = [strip_prefix(s, "sub") for s in b["subjects"]]
+        df = df[df["subject"].map(lambda s: strip_prefix(s, "sub")).isin(keep)]
+
+    # One query for all the candidate images, grouped by (subject, session).
+    files = layout.get(datatype=b["datatype"], suffix=b["suffix"],
+                       extension=b["extension"], **(b["filters"] or {}))
+    by_image = {}
+    for f in files:
+        e = f.get_entities()
+        by_image.setdefault((e["subject"], e.get("session")), []).append(f)
+
     images = []
-    subjects = get_subjects(layout, b["subjects"], b["subject_list"], b["subject_column"])
-    for subject in subjects:
-        for session in get_sessions(layout, subject, b["session"]):
-            f = select_image(
-                layout, subject, session, b["datatype"], b["suffix"], b["extension"],
-                b["filters"], b["prefer"],
-            )
-            if f is None:
-                print(f"[list_images] No {b['suffix']} for sub-{subject} ses-{session}.")
-                continue
-            images.append({"path": f.path, "entities": source_entities(f)})
+    for subject, session in zip(df["subject"], df["session"]):
+        subject, session = strip_prefix(subject, "sub"), strip_prefix(session, "ses")
+        f = pick_preferred(by_image.get((subject, session), []), b["prefer"])
+        if f is None:
+            print(f"[list_images] No {b['suffix']} for sub-{subject} ses-{session}.")
+            continue
+        images.append({"path": f.path, "entities": source_entities(f)})
     return images

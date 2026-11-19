@@ -22,5 +22,4 @@ def test_sessions(bids_dataset):
     root, _ = bids_dataset
     layout = b.load_layout(root)
     assert b.get_sessions(layout, "01") == ["01"]
-    assert b.get_sessions(layout, "03") == [None]
     assert b.get_sessions(layout, "01", "ses-02") == []

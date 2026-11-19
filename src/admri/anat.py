@@ -3,8 +3,7 @@ Anatomical preprocessing of T1-weighted images, one function per step:
 
 1. :func:`skull_strip_subject`: brain extraction (HD-BET).
 2. :func:`register_brain_subject`: registration to the template (ANTs SyN).
-3. :func:`warp_tissue_maps_subject`: warping of the FAST tissue maps to the
-   template space with the transforms of step 2 (optional).
+3. :func:`warp_tissue_maps_subject`: warping of the FAST tissue maps to the template space with the transforms of step 2 (optional).
 
 :func:`preprocess_anat_subject` runs the three steps for one image, and
 :func:`run_anat` runs them for all the selected images (``--step anat``).
@@ -28,6 +27,7 @@ import shutil # python library to move files and directories, "shell utilities"
 import sys
 from contextlib import contextmanager
 from pathlib import Path
+import subprocess
 
 from .bids import derivative_path, ensure_dataset_description, get_derivatives_root, list_images
 from .common import run_parallel, save_config, write_log
@@ -37,19 +37,6 @@ PVE_LABELS = {0: "CSF", 1: "GM", 2: "WM"}
 
 #: File name used by FSL BET-style tools for each skull stripping method.
 SKULL_STRIP_METHODS = {"hd-bet", "bet-nipype", "bet-fslpy"}
-
-
-@contextmanager
-def _quiet():
-    """Silence stdout/stderr of external tools (HD-BET is very verbose)."""
-    with open(os.devnull, "w") as devnull:
-        old_out, old_err = sys.stdout, sys.stderr
-        sys.stdout, sys.stderr = devnull, devnull
-        try:
-            yield
-        finally:
-            sys.stdout, sys.stderr = old_out, old_err
-
 
 def load_group_tools(path, bin_path=None):
     """
@@ -88,7 +75,7 @@ def load_group_tools(path, bin_path=None):
     return fun_defs
 
 
-def skull_strip(input_path, output_dir, method="hd-bet", tools=None, quiet=True):
+def skull_strip(input_path, output_dir, method="hd-bet", tools=None, device="cuda"):
     """
     Remove non-brain tissue from a T1-weighted image.
 
@@ -101,8 +88,8 @@ def skull_strip(input_path, output_dir, method="hd-bet", tools=None, quiet=True)
     method : {"hd-bet", "bet-nipype", "bet-fslpy"}, optional
         Skull stripping method. Default is ``"hd-bet"``.
     tools :Group module returned by :func:`load_group_tools`.
-    quiet : bool, optional
-        Hide the console output of the tool. Default is True.
+    device : {"cuda", "cpu"}, optional
+        Where to run the network. Default is ``"cuda"`` (GPU).
 
     Returns
     -------
@@ -123,11 +110,8 @@ def skull_strip(input_path, output_dir, method="hd-bet", tools=None, quiet=True)
     args = (str(input_path.parent) + "/", input_path.name, str(output_dir) + "/")
 
     if method == "hd-bet":
-        if quiet:
-            with _quiet():
-                out = tools.skull_stripping_hd_bet(*args)
-        else:
-            out = tools.skull_stripping_hd_bet(*args)
+        name = input_path.name.replace(".nii.gz", "_seg-brain-hdbet.nii.gz")
+        out = run_hd_bet(input_path, output_dir / name, device=device)
     elif method == "bet-nipype":
         out = tools.skull_stripping_nipype_bet(*args)
     else: # "bet-fslpy"
@@ -136,6 +120,39 @@ def skull_strip(input_path, output_dir, method="hd-bet", tools=None, quiet=True)
     out = Path(out)
     return out if out.is_absolute() else output_dir / out
 
+def run_hd_bet(input_path, output_path, device="cuda", tta=False):
+    """
+    Skull stripping with HD-BET (version 2).
+
+    Parameters
+    ----------
+    input_path : str or pathlib.Path
+        T1w image.
+    output_path : str or pathlib.Path
+        Skull-stripped image to write.
+    device : {"cuda", "cpu"}, optional
+        Where to run the network. Default is ``"cuda"`` (GPU).
+    tta : bool, optional
+        Test-time augmentation (slower, slightly more robust). Default is False,
+        as in the original ``-tta 0``.
+
+    Returns
+    -------
+    pathlib.Path
+        ``output_path``.
+
+    Raises
+    ------
+    RuntimeError
+        If hd-bet fails or does not write the output.
+    """
+    cmd = ["hd-bet", "-i", str(input_path), "-o", str(output_path), "-device", device]
+    if not tta:
+        cmd.append("--disable_tta")
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0 or not Path(output_path).is_file():
+        raise RuntimeError(f"hd-bet failed:\n{result.stderr[-2000:]}")
+    return Path(output_path)
 
 def register_to_template(moving_path, output_path, template_path, tools):
     """
@@ -327,7 +344,7 @@ def skull_strip_subject(t1_file, outputs, config, tools, overwrite=False):
     # The group function chooses the output name, so it writes into a temporary
     # folder and the result is then moved to its BIDS name.
     work = out.parent / "_work_skullstrip"
-    brain = skull_strip(t1_file, work, config["skull_strip"]["method"], tools)
+    brain = skull_strip(t1_file, work, config["skull_strip"]["method"], tools, device=config["skull_strip"]["device"])    
     shutil.move(str(brain), out)
     shutil.rmtree(work, ignore_errors=True)
     return out

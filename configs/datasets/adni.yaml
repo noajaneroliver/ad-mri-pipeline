@@ -1,16 +1,13 @@
 # Dataset configuration: everything that is specific to one BIDS dataset.
-# TODO: Replace every /path/to/ADNI with the actual path to the ADNI dataset.
-bids_root: /path/to/ADNI/bids # folder of the ADNI BIDS dataset (the one with the sub-* folders)
+bids_root: /pool/home/AD_Multimodal/ADNI/ADNI-BIDS # folder of the ADNI BIDS dataset
 # Optional. Default: <bids_root>/derivatives/admri
-derivatives_root: /path/to/ADNI/derivatives/admri # a new folder for the outputs
+derivatives_root: /pool/home/AD_Multimodal/NOA/derivatives/admri # a new folder for the outputs
 
 bids:
-  # Which subjects to process. If both are null, all sub-* folders.
-  subjects: null                 # e.g. [ADNI002S0295, ADNI002S0413]
-  subject_list: /path/to/ADNI/subjects.csv # CSV with the 902 subjects, or null to process every sub-*
-  subject_column: subject
-  # null = first session of each subject, "all" = every session, or a label.
-  session: null
+  # Optional: only these subjects from the CSV, null = every row of the CSV.
+  subjects: [ADNI002S0295]                 # e.g. [ADNI002S0295, ADNI002S0413]
+  # REQUIRED: CSV with columns "subject" and "session"; one image per row.
+  subject_list: /pool/home/AD_Multimodal/ADNI/irene_adni/subjects_tfm_irene_filtered_all.csv # CSV with the 902 subjects, or null to process every sub-*
   datatype: anat
   suffix: T1w
   extension: .nii.gz
@@ -20,18 +17,17 @@ bids:
   prefer:
     run: [2]
   # pybids index cache: the first run indexes the dataset, later runs are fast.
-  database_path: /path/to/ADNI/derivatives/pybids_index # where to save the pybids index (e.g. inside the derivatives folder)
+  database_path: /pool/home/AD_Multimodal/NOA/derivatives/pybids_index # where to save the pybids index
 
 group_tools:
   # Folder with the group's fun_defs.py and logwrapper.py
-  path: /pool/home/AD_Multimodal/Estudio_A4/codes_marina/Scripts_Preproc_Homebrew # CHECK THIS PATH
-  # Folder with the hd-bet executable (prepended to PATH)
-  bin_path: /home/biofisica/anaconda3/bin # /path/to/anaconda3/bin folder with hd-bet, or null if which hd-bet already finds it
+  path: /pool/home/AD_Multimodal/Estudio_A4/codes_marina/Scripts_Preproc_Homebrew # Folder with the hd-bet executable
+  bin_path: null # /path/to/anaconda3/bin folder with hd-bet
 
 registration:
   template: /pool/home/AD_Multimodal/ADNI/homebrew2/homebrew_preprocessing_scripts/atlas_ref/MNI152_T1_1mm_brain.nii.gz
 
 tissue_maps: # only if I want the tissue maps: folder and name pattern of the FAST segmentations
   # Native-space FAST segmentations. {subject} and {session} are replaced.
-  segmentation_dir: /path/to/ADNI/segmentations/sub-{subject}/ses-{session}
+  segmentation_dir: /pool/home/AD_Multimodal/ADNI/ADNI-BIDS/homebrew2/test_preproc04_selA/derivatives/anat/sub-{subject}/ses-{session}/segmentation
   pattern: "sub-{subject}_ses-{session}*_T1w_fast_seg_pve_{pve}.nii.gz"

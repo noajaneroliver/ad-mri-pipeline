@@ -1,11 +1,9 @@
 """
 Tools shared by the two preprocessing steps.
 
-- **Configuration**: load, merge and validate the YAML files (:data:`DEFAULTS`,
-  :func:`load_config`).
+- **Configuration**: load, merge and validate the YAML files (:data:`DEFAULTS`, :func:`load_config`).
 - **Reading and writing images**: NIfTI volumes and the saved 2D images.
-- **Running a step for many images**: one job per image, sequentially or in
-  parallel, with a CSV log.
+- **Running a step for many images**: one job per image, sequentially or in parallel, with a CSV log.
 """
 
 import traceback
@@ -28,8 +26,6 @@ DEFAULTS = {
     "bids": {
         "subjects": None,
         "subject_list": None,
-        "subject_column": "subject",
-        "session": None,
         "datatype": "anat",
         "suffix": "T1w",
         "extension": ".nii.gz",
@@ -47,6 +43,7 @@ DEFAULTS = {
     },
     "skull_strip": {
         "method": "hd-bet",
+        "device": "cuda"      # cuda (GPU) or cpu
     },
     "registration": {
         "template": None,
@@ -286,7 +283,7 @@ def save_image(image, path, fmt="npy"):
     Save a 2D (H, W) or multi-channel (H, W, C) image (values expected in [0, 1]),
     png/png16 clip values outside [0, 1] before converting them to integers;
     npy saves the values unchanged.
-    
+
     Parameters
     ----------
     image : numpy.ndarray
@@ -379,8 +376,7 @@ def run_parallel(func, jobs, n_jobs):
         futures = {pool.submit(_safe_call, func, job): job for job in jobs}
         for i, fut in enumerate(as_completed(futures), 1):
             results.append(fut.result())
-            print(f"  [{i}/{len(jobs)}] sub-{futures[fut]['entities']['subject']}: "
-                  f"{results[-1]['status']}")
+            print(f"  [{i}/{len(jobs)}] sub-{futures[fut]['entities']['subject']}: " f"{results[-1]['status']}")
     return results
 
 def _safe_call(func, job):

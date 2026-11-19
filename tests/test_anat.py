@@ -1,5 +1,6 @@
-"""Anatomical preprocessing steps with a fake ``fun_defs`` module (no HD-BET/ANTs needed)."""
+"""Anatomical preprocessing steps with fake hd-bet and fun_defs (no HD-BET/ANTs needed)."""
 
+from pathlib import Path
 import shutil
 import sys
 
@@ -11,10 +12,6 @@ from admri.bids import load_layout, select_image, source_entities
 
 FAKE_FUN_DEFS = '''
 import shutil, os
-def skull_stripping_hd_bet(path_in, name_in, path_out):
-    out = os.path.join(path_out, name_in.replace(".nii.gz", "_seg-brain-hdbet.nii.gz"))
-    shutil.copy(os.path.join(path_in, name_in), out)
-    return out
 def ants_registration_subject_T1_2_template(name_template, name_mov_t1, name_t1_reg):
     shutil.copy(name_mov_t1, name_t1_reg)
     prefix = name_t1_reg[:-len(".nii.gz")]
@@ -33,8 +30,15 @@ def fake_tools(tmp_path):
     if str(folder) in sys.path:
         sys.path.remove(str(folder))
 
+@pytest.fixture
+def fake_hd_bet(monkeypatch):
+    """Replace hd-bet by a copy of the input (no GPU or HD-BET needed)."""
+    def fake(input_path, output_path, device="cuda", tta=False):
+        shutil.copy(input_path, output_path)
+        return Path(output_path)
+    monkeypatch.setattr(anat, "run_hd_bet", fake)
 
-def test_preprocess_anat_subject_bids_names(tmp_path, bids_dataset, fake_tools):
+def test_preprocess_anat_subject_bids_names(tmp_path, bids_dataset, fake_tools, fake_hd_bet):
     root, _ = bids_dataset
     deriv = tmp_path / "deriv"
     f = select_image(load_layout(root), "02", "01", prefer={"run": [2]})
@@ -42,7 +46,7 @@ def test_preprocess_anat_subject_bids_names(tmp_path, bids_dataset, fake_tools):
     config = {
         "derivatives": {"space": "MNI152NLin6Asym"},
         "group_tools": {"path": str(fake_tools), "bin_path": None},
-        "skull_strip": {"method": "hd-bet"},
+        "skull_strip": {"method": "hd-bet", "device": "cpu"},
         "registration": {"template": "tpl.nii.gz"},
         "tissue_maps": {"enabled": False},
     }
@@ -62,12 +66,12 @@ def test_missing_group_tools(tmp_path):
         anat.load_group_tools(tmp_path)
 
 
-def test_steps_can_run_separately(tmp_path, bids_dataset, fake_tools):
+def test_steps_can_run_separately(tmp_path, bids_dataset, fake_tools, fake_hd_bet):
     """Each step works on its own and is skipped when its outputs exist."""
     root, _ = bids_dataset
     deriv = tmp_path / "deriv"
     f = select_image(load_layout(root), "01", "01")
-    config = {"skull_strip": {"method": "hd-bet"}, "registration": {"template": "tpl.nii.gz"}}
+    config = {"skull_strip": {"method": "hd-bet", "device": "cpu"}, "registration": {"template": "tpl.nii.gz"}}
     tools = anat.load_group_tools(fake_tools)
     outputs = anat.anat_outputs(deriv, source_entities(f))
 
@@ -91,7 +95,7 @@ def test_steps_can_run_separately(tmp_path, bids_dataset, fake_tools):
     assert outputs["affine"].read_text() == "unchanged"
 
 
-def test_run_anat_saves_log_and_config(tmp_path, bids_dataset, fake_tools):
+def test_run_anat_saves_log_and_config(tmp_path, bids_dataset, fake_tools, fake_hd_bet):    
     """run_anat writes the log and the configuration actually used."""
     from admri.common import load_config
     root, _ = bids_dataset
@@ -99,8 +103,7 @@ def test_run_anat_saves_log_and_config(tmp_path, bids_dataset, fake_tools):
     exp = tmp_path / "anat.yaml"
     exp.write_text(yaml.safe_dump({
         "bids_root": str(root), "derivatives_root": str(deriv),
-        "bids": {"prefer": {"run": [2]}},
-        "group_tools": {"path": str(fake_tools)},
+        "bids": {"prefer": {"run": [2]}, "subject_list": str(tmp_path / "subjects.csv")},        "group_tools": {"path": str(fake_tools)},
         "registration": {"template": "tpl.nii.gz"},
     }))
     log = anat.run_anat(load_config(exp), start=0, end=2, n_jobs=1, overwrite=True)

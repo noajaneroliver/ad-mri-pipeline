@@ -30,8 +30,9 @@ def _save(vol, path):
 @pytest.fixture
 def bids_dataset(tmp_path):
     """
-    BIDS dataset with 3 subjects; sub-02 has run-01 and run-02, sub-03 has no session.
+    BIDS dataset with 3 subjects (all with ses-01); sub-02 has run-01 and run-02.
     Registered images are written directly as derivatives (registration is skipped).
+    Also writes ``subjects.csv`` (columns subject, session) in ``tmp_path``.
     """
     root = tmp_path / "bids"
     root.mkdir()
@@ -41,15 +42,18 @@ def bids_dataset(tmp_path):
     _save(small, root / "sub-01/ses-01/anat/sub-01_ses-01_T1w.nii.gz")
     _save(small, root / "sub-02/ses-01/anat/sub-02_ses-01_run-01_T1w.nii.gz")
     _save(small, root / "sub-02/ses-01/anat/sub-02_ses-01_run-02_T1w.nii.gz")
-    _save(small, root / "sub-03/anat/sub-03_T1w.nii.gz")
+    _save(small, root / "sub-03/ses-01/anat/sub-03_ses-01_T1w.nii.gz")
 
     deriv = tmp_path / "derivatives" / "admri"
     vol = synthetic_volume()
     for name, folder in [("sub-01_ses-01", "sub-01/ses-01"),
                          ("sub-02_ses-01_run-02", "sub-02/ses-01"),
-                         ("sub-03", "sub-03")]:
+                         ("sub-03_ses-01", "sub-03/ses-01")]:
         _save(vol, deriv / folder / "anat" / f"{name}_space-MNI152NLin6Asym_desc-brain_T1w.nii.gz")
         for label in ["CSF", "GM", "WM"]:
             _save(np.clip(vol / vol.max(), 0, 1),
                   deriv / folder / "anat" / f"{name}_space-MNI152NLin6Asym_label-{label}_probseg.nii.gz")
+
+    (tmp_path / "subjects.csv").write_text(
+        "subject,session\nsub-01,ses-01\nsub-02,ses-01\nsub-03,ses-01\n")
     return root, deriv

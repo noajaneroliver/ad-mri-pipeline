@@ -16,6 +16,12 @@ dependencies = [
     "nibabel",
     "pybids",
     "PyYAML",
+    "fslpy",
+    "nipype",
+    "antspyx",
+    "nilearn",
+    "nitime",
+    "hd-bet"
 ]
 
 [project.optional-dependencies]

@@ -12,8 +12,7 @@ def write_configs(tmp_path, root, deriv, slices):
     ds = tmp_path / "dataset.yaml"
     ds.write_text(yaml.safe_dump({
         "bids_root": str(root), "derivatives_root": str(deriv),
-        "bids": {"prefer": {"run": [2]}},
-    }))
+        "bids": {"prefer": {"run": [2]}, "subject_list": str(tmp_path / "subjects.csv")},    }))
     exp = tmp_path / "exp.yaml"
     exp.write_text(yaml.safe_dump({"dataset": str(ds), "name": "test", "slices": slices}))
     return load_config(exp)
