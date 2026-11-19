@@ -1,0 +1,28 @@
+# 2D inputs: 3 central coronal slices (selected configuration in Irene's TFM).
+#   python scripts/preprocess.py --config configs/experiments/coronal_3slices.yaml --step slices
+
+dataset: ../datasets/adni.yaml
+name: coronal_3slices             # output folder: <derivatives>/slices/coronal_3slices
+
+slices:
+  source: T1w                     # T1w | tissue_maps
+  view: coronal                   # axial | coronal | sagittal
+  n_slices: 3                     # 1, 3, 20...
+  center: null                    # null = middle of the axis (109 for coronal MNI 1 mm)
+  rotate90: true
+  volume_normalization: minmax    # min-max of the brain volume before slicing
+  background_threshold: 0.0
+  patches: null
+  resize:
+    size: 224
+    method: crop_preserve_aspect  # crop_preserve_aspect | direct | null
+  normalization:
+    method: gaussian              # gaussian | minmax | null
+    fwhm: 6.0                     # mm
+    pixel_size: 1.0               # mm per pixel (original pipeline: 1.0)
+  # true = reproduce the 8-bit PNG rounding of the original pipeline exactly
+  legacy_uint8: false
+  output_format: npy              # npy | png | png16
+
+run:
+  n_jobs: 8

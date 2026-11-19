@@ -1,0 +1,21 @@
+# Anatomical preprocessing of all subjects (step "anat"): skull stripping,
+# registration to the template and, optionally, warping of the tissue maps.
+# Run once per dataset.
+#   python scripts/preprocess.py --config configs/experiments/anat.yaml --step anat
+
+dataset: ../datasets/adni.yaml
+
+derivatives:
+  pipeline_name: admri
+  space: MNI152NLin6Asym          # BIDS name of the FSL MNI152 template
+
+skull_strip:
+  method: hd-bet                  # hd-bet | bet-nipype | bet-fslpy
+
+tissue_maps:
+  enabled: true                   # also warp the CSF/GM/WM maps (needed for source: tissue_maps)
+  interpolation: linear
+
+run:
+  n_jobs: 1
+  overwrite: false

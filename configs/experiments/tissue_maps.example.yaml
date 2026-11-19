@@ -1,0 +1,17 @@
+# 2D inputs: central coronal slice of the CSF, GM and WM probability maps
+# (one image per tissue; the model stacks them as 3 channels).
+# Requires the step anat with tissue_maps.enabled: true.
+
+dataset: ../datasets/adni.yaml
+name: tissue_maps # output folder name
+
+slices:
+  source: tissue_maps
+  view: coronal
+  n_slices: 1
+  volume_normalization: null      # probabilities are already in [0, 1]
+  resize: {size: 224, method: direct}
+  normalization: {method: null}
+
+run:
+  n_jobs: 8

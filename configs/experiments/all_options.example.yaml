@@ -1,0 +1,102 @@
+# Reference of ALL the configuration options, with their default values.
+#
+# Every key is optional: a key that is not written takes its value from the
+# dataset config, or from the defaults (DEFAULTS in src/admri/common.py).
+# Priority: DEFAULTS -> dataset YAML -> experiment YAML (the experiment wins).
+#
+# The keys under "Dataset settings" normally go in configs/datasets/<name>.yaml.
+# They are commented out here so that this file does not override your paths;
+# uncomment one only to change it for a single experiment.
+#
+
+dataset: ../datasets/adni.yaml    # dataset config (relative to this file, or absolute)
+name: all_options                 # experiment name -> output folder <derivatives_root>/slices/<name>
+                                  # default: the file name without .yaml
+
+# =============================================================================
+# Dataset settings (normally in the dataset YAML)
+# =============================================================================
+
+# bids_root: /path/to/ADNI/bids             # REQUIRED: folder with the sub-* folders
+# derivatives_root: /path/to/derivatives    # outputs; default <bids_root>/derivatives/<pipeline_name>
+
+# bids:
+#   subjects: null           # list of subjects to process, e.g. [01, 02]; null = all
+#   subject_list: null       # CSV with the subjects to process; null = all
+#   subject_column: subject  # column of subject_list with the subject labels
+#   session: null            # null = first session | "all" = every session | a label, e.g. "01"
+#   datatype: anat
+#   suffix: T1w
+#   extension: .nii.gz
+#   filters: {}              # extra pybids filters, e.g. {acquisition: MPRAGE}
+#   prefer: {}               # preferred values if several images match, e.g. {run: [2]}
+#   database_path: null      # pybids index cache (null = index again on every run)
+
+# group_tools:               # needed by skull stripping and registration
+#   path: null               # folder with the group's fun_defs.py
+#   bin_path: null           # folder with the hd-bet executable; null if already in PATH
+
+# registration:
+#   template: null           # REQUIRED for step anat: fixed image (MNI152_T1_1mm_brain.nii.gz)
+
+# tissue_maps:
+#   segmentation_dir: null   # folder of the native FAST maps; {subject}, {session} are replaced
+#   pattern: null            # file name pattern; {subject}, {session}, {pve} (0=CSF, 1=GM, 2=WM)
+
+# =============================================================================
+# Step "anat": skull stripping, registration, tissue maps
+# =============================================================================
+
+derivatives:
+  pipeline_name: admri            # name of the derivatives subfolder
+  space: MNI152NLin6Asym          # BIDS name of the template space (FSL MNI152 1 mm)
+
+skull_strip:
+  method: hd-bet                  # hd-bet | bet-nipype | bet-fslpy
+
+tissue_maps:
+  enabled: false                  # true = also warp the CSF/GM/WM maps to the template
+  interpolation: linear           # ANTs interpolator (linear for probability maps)
+
+# =============================================================================
+# Step "slices": 2D inputs of the model
+# =============================================================================
+
+slices:
+  source: T1w                     # T1w (registered brain) | tissue_maps (CSF, GM, WM maps)
+  view: coronal                   # axial | coronal | sagittal
+  n_slices: 3                     # number of consecutive central slices (1, 3, 20...)
+  center: null                    # index of the central slice; null = middle of the axis
+  rotate90: true                  # rotate each slice 90 degrees (as in the original pipeline)
+
+  volume_normalization: minmax    # minmax | null: 3D min-max of the brain before slicing (T1w only)
+  background_threshold: 0.0       # voxels <= this value are background (excluded from normalisations)
+
+  patches: null                   # null = whole slices; or the patches of the original pipeline:
+  # patches:
+  #   patch_size: 64              # side of the square patch, in pixels
+  #   margin_bottom: 28           # pixels between the patch and the lower border
+  #   margin_side: 12             # pixels between the patch and the lateral border
+  #   mirror_left: true           # flip the left patch horizontally
+
+  resize:
+    size: 224                     # output side in pixels (ResNet50 input: 224)
+    method: crop_preserve_aspect  # crop_preserve_aspect | direct (stretch) | null (no resize)
+
+  normalization:
+    method: gaussian              # gaussian | minmax | null (no normalisation)
+    fwhm: 6.0                     # gaussian only: smoothing FWHM, in mm
+    pixel_size: 1.0               # gaussian only: mm per pixel
+    # background_threshold: 0.0   # default: slices.background_threshold
+
+  legacy_uint8: false             # true = reproduce the 8-bit PNG rounding of the original pipeline
+  output_format: npy              # npy (float32, lossless) | png (8-bit) | png16 (16-bit)
+  # output_dir: null              # output folder; default <derivatives_root>/slices/<name>
+
+# =============================================================================
+# Execution (both steps)
+# =============================================================================
+
+run:
+  n_jobs: 1                       # parallel processes (also --n-jobs)
+  overwrite: false                # recompute existing outputs (also --overwrite)

@@ -1,0 +1,14 @@
+# 2D inputs: 20 central coronal slices (c-10 ... c+9).
+# They include the 1- and 3-slice inputs, so this single run covers all
+# coronal whole-slice configurations.
+
+dataset: ../datasets/adni.yaml
+name: coronal_20slices # output folder name
+
+slices:
+  view: coronal
+  n_slices: 20
+  resize: {size: 224, method: direct}
+
+run:
+  n_jobs: 8

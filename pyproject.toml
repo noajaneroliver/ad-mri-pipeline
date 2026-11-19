@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "admri"
+version = "0.1.0"
+description = "Preprocessing and deep learning for structural MRI in BIDS format (Alzheimer's disease)."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "pandas",
+    "scipy",
+    "Pillow",
+    "nibabel",
+    "pybids",
+    "PyYAML",
+]
+
+[project.optional-dependencies]
+tissue_maps = ["antspyx"]   # ANTsPy, to warp the tissue maps
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

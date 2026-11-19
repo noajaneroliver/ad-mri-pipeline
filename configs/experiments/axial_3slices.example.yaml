@@ -1,0 +1,12 @@
+# 2D inputs: 3 central axial slices (218 x 182 -> resize keeping proportions + crop).
+
+dataset: ../datasets/adni.yaml
+name: axial_3slices # output folder name
+
+slices:
+  view: axial
+  n_slices: 3
+  resize: {size: 224, method: crop_preserve_aspect}
+
+run:
+  n_jobs: 8

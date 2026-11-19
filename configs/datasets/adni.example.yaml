@@ -1,0 +1,40 @@
+# Dataset configuration: everything that is specific to one BIDS dataset.
+# Copy this file to adni.yaml (ignored by git) and edit the paths.
+
+bids_root: /path/to/ADNI/bids
+# Optional. Default: <bids_root>/derivatives/admri
+derivatives_root: /path/to/ADNI/derivatives/admri
+
+bids:
+  # Which subjects to process. If both are null, all sub-* folders.
+  subjects: null                 # e.g. [ADNI002S0295, ADNI002S0413]
+  subject_list: /path/to/ADNI/subjects.csv
+  subject_column: subject
+  # null = first session of each subject, "all" = every session, or a label.
+  session: null
+  datatype: anat
+  suffix: T1w
+  extension: .nii.gz
+  # Extra pybids filters, e.g. {acquisition: MPRAGE}
+  filters: {}
+  # If several T1w match, preferred values in order (original rule: run-02 first).
+  prefer:
+    run: [2]
+  # pybids index cache: the first run indexes the dataset, later runs are fast.
+  database_path: /path/to/ADNI/derivatives/pybids_index
+
+group_tools:
+  # Folder with the group's fun_defs.py and logwrapper.py
+  path: /path/to/Scripts_Preproc_Homebrew
+  # Folder with the hd-bet executable (prepended to PATH), or null if hd-bet is already found
+  bin_path: /path/to/anaconda3/bin
+
+registration:
+  # Fixed image of the registration (FSL MNI152 1 mm brain)
+  template: /path/to/MNI152_T1_1mm_brain.nii.gz
+
+tissue_maps:
+  # Native-space FAST segmentations. {subject} and {session} are replaced;
+  # {pve} is the FAST class number (0 = CSF, 1 = GM, 2 = WM).
+  segmentation_dir: /path/to/ADNI/segmentations/sub-{subject}/ses-{session}
+  pattern: "sub-{subject}_ses-{session}*_T1w_fast_seg_pve_{pve}.nii.gz"
