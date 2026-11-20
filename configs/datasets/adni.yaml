@@ -1,7 +1,7 @@
 # Dataset configuration: everything that is specific to one BIDS dataset.
 bids_root: /pool/home/AD_Multimodal/ADNI/ADNI-BIDS # folder of the ADNI BIDS dataset
 # Optional. Default: <bids_root>/derivatives/admri
-derivatives_root: /pool/home/AD_Multimodal/NOA/derivatives/admri # a new folder for the outputs
+derivatives_root: /pool/home/AD_Multimodal/PREVENT-AD/Folder_Noa/derivatives/admri # a new folder for the outputs
 
 bids:
   # Optional: only these subjects from the CSV, null = every row of the CSV.
@@ -17,7 +17,7 @@ bids:
   prefer:
     run: [2]
   # pybids index cache: the first run indexes the dataset, later runs are fast.
-  database_path: /pool/home/AD_Multimodal/NOA/derivatives/pybids_index # where to save the pybids index
+  database_path: /pool/home/AD_Multimodal/PREVENT-AD/Folder_Noa/derivatives/pybids_index # where to save the pybids index
 
 group_tools:
   # Folder with the group's fun_defs.py and logwrapper.py
@@ -29,5 +29,6 @@ registration:
 
 tissue_maps: # only if I want the tissue maps: folder and name pattern of the FAST segmentations
   # Native-space FAST segmentations. {subject} and {session} are replaced.
-  segmentation_dir: /pool/home/AD_Multimodal/ADNI/ADNI-BIDS/homebrew2/test_preproc04_selA/derivatives/anat/sub-{subject}/ses-{session}/segmentation
+  # sel*: search selA/B/C. Subjects can repeat across folders, but each sub/ses pair is in only one.
+  segmentation_dir: /pool/home/AD_Multimodal/ADNI/ADNI-BIDS/homebrew2/test_preproc04_sel*/derivatives/anat/sub-{subject}/ses-{session}/segmentation
   pattern: "sub-{subject}_ses-{session}*_T1w_fast_seg_pve_{pve}.nii.gz"

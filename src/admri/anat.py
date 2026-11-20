@@ -70,7 +70,7 @@ def load_group_tools(path, bin_path=None):
     if bin_path:
         os.environ["PATH"] = str(bin_path) + os.pathsep + os.environ.get("PATH", "")
 
-    import fun_defs  # noqa: E402  (module provided by the group)
+    import fun_defs  # noqa: E402
 
     return fun_defs
 
@@ -200,8 +200,7 @@ def register_to_template(moving_path, output_path, template_path, tools):
     return {"image": output_path, "warp": Path(warp), "affine": Path(affine)}
 
 
-def apply_transforms(moving_path, output_path, template_path, warp_path, affine_path,
-                     interpolation="linear"):
+def apply_transforms(moving_path, output_path, template_path, warp_path, affine_path, interpolation="linear"):
     """
     Apply existing native -> template transforms to another image.
 
@@ -344,7 +343,7 @@ def skull_strip_subject(t1_file, outputs, config, tools, overwrite=False):
     # The group function chooses the output name, so it writes into a temporary
     # folder and the result is then moved to its BIDS name.
     work = out.parent / "_work_skullstrip"
-    brain = skull_strip(t1_file, work, config["skull_strip"]["method"], tools, device=config["skull_strip"]["device"])    
+    brain = skull_strip(t1_file, work, config["skull_strip"]["method"], tools, device=config["skull_strip"]["device"])
     shutil.move(str(brain), out)
     shutil.rmtree(work, ignore_errors=True)
     return out
@@ -388,8 +387,7 @@ def register_brain_subject(outputs, config, tools, overwrite=False):
     # (..._transform0.nii.gz, ..._transform1.mat), so it also works in a
     # temporary folder and the results are moved to their BIDS names.
     work = outputs["brain_template"].parent / "_work_registration"
-    reg = register_to_template(outputs["brain_native"], work / "registered.nii.gz",
-                               config["registration"]["template"], tools)
+    reg = register_to_template(outputs["brain_native"], work / "registered.nii.gz", config["registration"]["template"], tools)
     for key in keys:
         src = reg["image"] if key == "brain_template" else reg[key]
         shutil.move(str(src), outputs[key])
@@ -431,8 +429,7 @@ def warp_tissue_maps_subject(entities, outputs, config, overwrite=False):
     for label, path in maps.items():
         out = outputs[f"probseg_{label}"]
         if overwrite or not out.is_file():
-            apply_transforms(path, out, config["registration"]["template"], outputs["warp"],
-                             outputs["affine"], tm_cfg.get("interpolation", "linear"))
+            apply_transforms(path, out, config["registration"]["template"], outputs["warp"], outputs["affine"], tm_cfg.get("interpolation", "linear"))
     return outputs
 
 
@@ -488,8 +485,7 @@ def preprocess_anat_subject(t1_file, entities, derivatives_root, config, tools=N
 
 def _anat_one(path, entities, derivatives_root, config, overwrite):
     """Preprocess one image (worker function for :func:`run_anat`)."""
-    outputs = preprocess_anat_subject(path, entities, derivatives_root, config,
-                                      overwrite=overwrite)
+    outputs = preprocess_anat_subject(path, entities, derivatives_root, config, overwrite=overwrite)
     return {**entities, "status": "ok", "message": "",
             "brain_template": str(outputs["brain_template"])}
 
@@ -532,7 +528,6 @@ def run_anat(config, start=None, end=None, n_jobs=None, overwrite=None):
 
     images = list_images(config)[start:end]
     print(f"Anatomical preprocessing of {len(images)} images -> {deriv}")
-    jobs = [{"path": im["path"], "entities": im["entities"], "derivatives_root": deriv,
-             "config": config, "overwrite": overwrite} for im in images]
+    jobs = [{"path": im["path"], "entities": im["entities"], "derivatives_root": deriv, "config": config, "overwrite": overwrite} for im in images]
     rows = run_parallel(_anat_one, jobs, n_jobs)
     return write_log(rows, deriv / "logs" / f"anat{suffix}.csv")

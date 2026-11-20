@@ -5,6 +5,12 @@ Pillow
 nibabel
 pybids
 PyYAML
+fslpy
+nipype
+antspyx
+nilearn
+nitime
+hd-bet
 
 [dev]
 pytest

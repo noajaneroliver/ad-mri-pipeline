@@ -11,6 +11,12 @@ Requires-Dist: Pillow
 Requires-Dist: nibabel
 Requires-Dist: pybids
 Requires-Dist: PyYAML
+Requires-Dist: fslpy
+Requires-Dist: nipype
+Requires-Dist: antspyx
+Requires-Dist: nilearn
+Requires-Dist: nitime
+Requires-Dist: hd-bet
 Provides-Extra: tissue-maps
 Requires-Dist: antspyx; extra == "tissue-maps"
 Provides-Extra: dev
