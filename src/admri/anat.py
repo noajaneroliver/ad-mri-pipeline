@@ -70,6 +70,14 @@ def load_group_tools(path, bin_path=None):
     if bin_path:
         os.environ["PATH"] = str(bin_path) + os.pathsep + os.environ.get("PATH", "")
 
+    # Make child processes (e.g. hd-bet) load the environment's libstdc++
+    # instead of the older system one (CXXABI_1.3.15 error on Linux servers).
+    libstdcxx = Path(sys.prefix) / "lib" / "libstdc++.so.6"
+    if libstdcxx.is_file() and str(libstdcxx) not in os.environ.get("LD_PRELOAD", ""):
+        os.environ["LD_PRELOAD"] = (
+            str(libstdcxx) + os.pathsep + os.environ.get("LD_PRELOAD", "")
+        ).rstrip(os.pathsep)
+
     import fun_defs  # noqa: E402
 
     return fun_defs
