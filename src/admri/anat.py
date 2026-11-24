@@ -28,6 +28,7 @@ import sys
 from contextlib import contextmanager
 from pathlib import Path
 import subprocess
+import tempfile
 
 from .bids import derivative_path, ensure_dataset_description, get_derivatives_root, list_images
 from .common import run_parallel, save_config, write_log
@@ -195,11 +196,17 @@ def register_to_template(moving_path, output_path, template_path, tools):
     output_path.parent.mkdir(parents=True, exist_ok=True)
     prefix = str(output_path)[: -len(".nii.gz")]
 
-    tools.ants_registration_subject_T1_2_template(
-        name_template=str(template_path),
-        name_mov_t1=str(moving_path),
-        name_t1_reg=str(output_path),
-    )
+    old_tmp = tempfile.tempdir
+    tempfile.tempdir = str(output_path.parent)
+    try:
+        tools.ants_registration_subject_T1_2_template(
+            name_template=str(template_path),
+            name_mov_t1=str(moving_path),
+            name_t1_reg=str(output_path),
+        )
+    finally:
+        tempfile.tempdir = old_tmp
+
     warp, affine = prefix + "_transform0.nii.gz", prefix + "_transform1.mat"
 
     for path in (output_path, warp, affine):
