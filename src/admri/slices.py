@@ -421,7 +421,7 @@ def run_slices(config, start=None, end=None, n_jobs=None):
     print(f"Extracting slices for {len(images)} images -> {out_root}")
     jobs = [{"path": im["path"], "entities": im["entities"], "derivatives_root": deriv,
              "out_root": out_root, "config": config} for im in images]
-    results = run_parallel(_slices_one, jobs, n_jobs)
+    results = run_parallel(_slices_one, jobs, n_jobs, config["run"]["threads_per_job"])
 
     suffix = "" if start is None and end is None else f"_{start or 0}-{end if end is not None else 'end'}"
     images = pd.DataFrame([r for res in results for r in res.pop("rows", [])])

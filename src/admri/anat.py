@@ -537,5 +537,5 @@ def run_anat(config, start=None, end=None, n_jobs=None, overwrite=None):
     images = list_images(config)[start:end]
     print(f"Anatomical preprocessing of {len(images)} images -> {deriv}")
     jobs = [{"path": im["path"], "entities": im["entities"], "derivatives_root": deriv, "config": config, "overwrite": overwrite} for im in images]
-    rows = run_parallel(_anat_one, jobs, n_jobs)
+    rows = run_parallel(_anat_one, jobs, n_jobs, config["run"]["threads_per_job"])
     return write_log(rows, deriv / "logs" / f"anat{suffix}.csv")

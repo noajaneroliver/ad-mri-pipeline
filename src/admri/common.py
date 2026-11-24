@@ -6,6 +6,7 @@ Tools shared by the two preprocessing steps.
 - **Running a step for many images**: one job per image, sequentially or in parallel, with a CSV log.
 """
 
+import os
 import traceback
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from copy import deepcopy
@@ -70,6 +71,7 @@ DEFAULTS = {
     },
     "run": {
         "n_jobs": 1,
+        "threads_per_job": None,   # None = do not limit (each library uses all the cores)
         "overwrite": False,
     },
 }
@@ -199,6 +201,10 @@ def validate_config(config):
 
     if sl["source"] not in {"T1w", "tissue_maps"}:
         errors.append("slices.source must be 'T1w' or 'tissue_maps'.")
+
+    threads = config["run"].get("threads_per_job")
+    if threads is not None and (not isinstance(threads, int) or threads < 1):
+        errors.append("run.threads_per_job must be a positive integer or null.")
 
     if errors:
         raise ValueError("Invalid configuration:\n- " + "\n- ".join(errors))
@@ -358,13 +364,18 @@ def load_image(path):
 # Running a step for many images (used by run_anat and run_slices)
 # ---------------------------------------------------------------------------
 
-def run_parallel(func, jobs, n_jobs):
+def run_parallel(func, jobs, n_jobs, threads_per_job=None):
     """
     Run ``func(**job)`` for each job, sequentially or in parallel.
 
     Returns a list of result dicts; exceptions are caught and reported as
     rows with ``status="error"``.
     """
+    if threads_per_job:
+        for var in ("ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS", "OMP_NUM_THREADS",
+                    "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
+            os.environ[var] = str(threads_per_job)
+
     results = []
     if n_jobs == 1:
         for i, job in enumerate(jobs, 1):

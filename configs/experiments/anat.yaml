@@ -3,7 +3,7 @@
 # Run once per dataset.
 #   python scripts/preprocess.py --config configs/experiments/anat.yaml --step anat
 
-dataset: ../datasets/adni.yaml
+dataset: ../datasets/adni_all_subjects.yaml
 
 derivatives:
   pipeline_name: admri
@@ -17,5 +17,6 @@ tissue_maps:
   interpolation: linear
 
 run:
-  n_jobs: 1
-  overwrite: false
+  n_jobs: 8
+  threads_per_job: 3   # alfa server has 32 CPU cores, so 8 jobs x 3 threads = 24 threads in total, leaving some room for other processes
+  overwrite: true
